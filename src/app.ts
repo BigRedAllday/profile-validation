@@ -6,15 +6,14 @@ async function main() {
     // const baseProfile = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     const solarInput = [400, 400, 400, 400, 450, 450, 450, 450, 400, 400, 400, 400];
 
-    const fileContent = fs.readFileSync("./../tp-link-logger/profile/Waschmaschine_60_Grad_Ende_18_47_plus_Nachlauf.csv", "utf-8");
+    const fileContent = fs.readFileSync("./../tp-link-logger/profile/Waschmaschine_30_Grad_Ende_11_01_plus_Nachlauf.csv", "utf-8");
     const lines = fileContent.split("\r\n");
 
     const firstDate = new Date(lines[1].split(";")[0]);
     let lastDate = addSeconds(firstDate, -1);
 
-    const wattMinutes: number[] = [];
-
-    console.log(`Reading file with ${lines.length} lines`);
+    const wattMinutesSelf: number[] = [];
+    const wattMinutesTotal: number[] = [];
 
     for (const line of lines) {
         const date = new Date(line.split(";")[0]);
@@ -32,18 +31,28 @@ async function main() {
 
         const currentSelfConsumption = Math.min(currentSolarInputValue, currentConsumption);
         const timePassedSeconds = (date.getTime() - lastDate.getTime()) / 1000;
-        const currentWattSeconds = Number(currentSelfConsumption.toFixed(4)) * timePassedSeconds;
+        const currentWattSecondsSelfConsumption = Number(currentSelfConsumption.toFixed(5)) * timePassedSeconds;
+        const currentWattSecondsConsumption = Number(currentConsumption.toFixed(5)) * timePassedSeconds;
 
         const currentWattMinuteBatch = Math.floor(pastMinutes);
 
-        const currentBatchValue = wattMinutes[currentWattMinuteBatch];
-        wattMinutes[currentWattMinuteBatch] = !currentBatchValue ? currentWattSeconds : currentBatchValue + currentWattSeconds;
+        const currentBatchValueSelf = wattMinutesSelf[currentWattMinuteBatch];
+        wattMinutesSelf[currentWattMinuteBatch] = !currentBatchValueSelf
+            ? currentWattSecondsSelfConsumption
+            : currentBatchValueSelf + currentWattSecondsSelfConsumption;
+
+        const currentBatchValueTotal = wattMinutesTotal[currentWattMinuteBatch];
+        wattMinutesTotal[currentWattMinuteBatch] = !currentBatchValueTotal
+            ? currentWattSecondsConsumption
+            : currentBatchValueTotal + currentWattSecondsConsumption;
         lastDate = date;
     }
 
-    const totalWattMinutes = wattMinutes.reduce((accumulator, currentValue) => accumulator + currentValue / 60, 0);
+    const totalWattMinutesSelf = wattMinutesSelf.reduce((accumulator, currentValue) => accumulator + currentValue / 60, 0);
+    const totalWattMinutesTotal = wattMinutesTotal.reduce((accumulator, currentValue) => accumulator + currentValue / 60, 0);
 
-    console.log(`Watthours: ${totalWattMinutes / 60}`);
+    console.log(`Self Consumption (Wh): ${totalWattMinutesSelf / 60}`);
+    console.log(`Total Consumption (Wh): ${totalWattMinutesTotal / 60}`);
 }
 
 //Invoke the main function
